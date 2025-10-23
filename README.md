@@ -6,7 +6,7 @@
 
 ## Overview
 
-This project is a C-based, discrete-time simulation of an industrial bakery's order management system. It was developed to fulfill the requirements of the final exam for the "Algorithms and Data Structures" course.
+This project is a C-based, discrete-time simulation of an industrial bakery's order management system. It was developed to fulfill the requirements of the final exam for the "Algorithms and Principles of Computer Science" course.
 
 The application simulates the bakery's complete workflow by processing a series of commands from an input file. It manages ingredients, recipes, warehouse inventory, customer orders, and shipping logistics, all operating within a discrete timeline where one time instant passes after each command is processed.
 
