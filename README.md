@@ -35,7 +35,7 @@ To meet the project's efficiency requirements, specific data structures were cho
     All dynamic collections—such as order queues and ingredient batches—are implemented as **doubly-linked lists**. This allows for efficient $O(1)$ insertion and removal of nodes as orders change state (e.g., from `pending` to `ready`) or as ingredient batches are consumed.
 
 * **Efficient Expiration Logic (Sorted List):**
-    The "FIFO by Expiration" requirement is implemented efficiently. Each ingredient maintains a list of its available batches (`rifornimenti_head`). This list is **kept sorted by expiration date** at all times. When a restock occurs, the new batch is inserted in its correct sorted position. This design makes consumption trivial: the system simply takes from the **head of the list** ($O(1)$), which is guaranteed to be the batch with the nearest expiration date.
+    The "FIFO by Expiration" requirement is implemented efficiently. Each ingredient maintains a list of its available batches (`rifornimenti_head`). This list is **kept sorted by expiration date** at all times. When a restock occurs, the new batch is inserted in its correct sorted position. This design makes consumption trivial: the system simply takes from the **head of the list**, which is guaranteed to be the batch with the nearest expiration date.
 
 * **Order Queue Management:**
     * **Pending Queue (`ordine_in_attesa_head`):** A list managed as a FIFO queue. After a restock, the system iterates this queue from tail to head to process the oldest pending orders first.
