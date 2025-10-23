@@ -6,34 +6,46 @@
 
 ## Overview
 
-This project is a C-based, discrete-time simulation of an industrial bakery's order management system. 
-It was developed to fulfill the requirements of the final exam for the "Algorithms and Principles of Computer Science" course.
+This project is a C-based, discrete-time simulation of an industrial bakery's order management system. It was developed to fulfill the requirements of the final exam for the "Algorithms and Data Structures" course.
 
-The application simulates the bakery's complete workflow by processing a series of commands from an input file. 
-It manages ingredients, recipes, warehouse inventory, customer orders, and shipping logistics, all operating within a discrete timeline where one time instant passes after each command is processed.
+The application simulates the bakery's complete workflow by processing a series of commands from an input file. It manages ingredients, recipes, warehouse inventory, customer orders, and shipping logistics, all operating within a discrete timeline where one time instant passes after each command is processed.
 
 ## Core Features
 
 The simulation is built around several key entities and logical processes:
 
-### 1. Warehouse & Inventory Management
-* **Ingredients:** The system tracks ingredients by name.
-* **Batches (Lotti):** The warehouse is stocked with batches of ingredients. Each batch has a specific quantity (in grams) and an expiration date (represented as a time instant).
-* **Inventory Logic (FIFO by Expiration):** When ingredients are required for a recipe, the system **always** consumes them from the batches with the *nearest expiration date* first.
+* **Warehouse & Inventory Management:** The system tracks ingredients by name. The warehouse is stocked with batches, each with a specific quantity and an expiration date.
+* **Inventory Logic (FIFO by Expiration):** When ingredients are required, the system **always** consumes them from the batches with the *nearest expiration date* first.
+* **Recipe Management:** Recipes are defined by a name and a list of required ingredients with their exact quantities.
+* **Order Processing (FIFO Queue):** Customer orders are processed immediately. If the warehouse lacks sufficient ingredients, the order is placed in a "pending" queue. This queue is processed in chronological (FIFO) order as soon as a restock provides the necessary ingredients.
+* **Courier & Shipping Logistics:** A courier with a fixed capacity arrives periodically.
+    1.  **Selection:** Orders are selected from the "ready" queue chronologically (FIFO) until the truck is full.
+    2.  **Loading:** The selected orders are then **loaded onto the truck in descending order of weight**.
 
-### 2. Recipe Management
-* Recipes are defined by a name and a list of required ingredients with their exact quantities in grams.
-* The system allows for adding and removing recipes dynamically.
+---
 
-### 3. Order Processing
-* **Instantaneous Preparation:** Customer orders are processed immediately. The system assumes preparation time is instantaneous (part of the same time instant as the command).
-* **Pending Queue (FIFO):** If the warehouse lacks sufficient ingredients to fulfill an order, the order is placed in a "pending" queue. This queue is processed in chronological (FIFO) order; as soon as a restock provides the necessary ingredients, the oldest pending orders are fulfilled.
+## Technical Design & Data Structures
 
-### 4. Courier & Shipping Logistics
-* **Periodic Arrival:** A courier with a fixed capacity (in grams) arrives at periodic intervals (e.g., every $n$ time instants).
-* **Loading Selection (FIFO):** The courier selects from the "ready" orders in chronological order of their arrival.
-* **Capacity Check:** An order is only selected if its *entire* weight fits within the courier's remaining capacity. A dessert's weight is the sum of its ingredients' weights.
-* **Loading Order (Descending Weight):** After the orders for the truck have been selected, they are **loaded onto the truck in descending order of weight**. If two orders have the same weight, they are loaded chronologically.
+To meet the project's efficiency requirements, specific data structures were chosen:
+
+* **Hash Tables for $O(1)$ Lookups:**
+    Recipes and ingredients are stored in **hash tables** (`ingredienti_head` and `ricette_head`). This provides an average-case $O(1)$ time complexity for searching, adding, or retrieving items by name, which is critical for performance and vastly superior to a linear $O(N)$ scan. The implementation uses *separate chaining* with doubly-linked lists for collision handling.
+
+* **Doubly-Linked Lists for Dynamic Data:**
+    All dynamic collections—such as order queues and ingredient batches—are implemented as **doubly-linked lists**. This allows for efficient $O(1)$ insertion and removal of nodes as orders change state (e.g., from `pending` to `ready`) or as ingredient batches are consumed.
+
+* **Efficient Expiration Logic (Sorted List):**
+    The "FIFO by Expiration" requirement is implemented efficiently. Each ingredient maintains a list of its available batches (`rifornimenti_head`). This list is **kept sorted by expiration date** at all times. When a restock occurs, the new batch is inserted in its correct sorted position. This design makes consumption trivial: the system simply takes from the **head of the list** ($O(1)$), which is guaranteed to be the batch with the nearest expiration date.
+
+* **Order Queue Management:**
+    * **Pending Queue (`ordine_in_attesa_head`):** A list managed as a FIFO queue. After a restock, the system iterates this queue from tail to head to process the oldest pending orders first.
+    * **Ready Queue (`ordine_pronti_head`):** A list kept **sorted by arrival time** to ensure the courier selects orders chronologically.
+
+* **Performance Optimizations:**
+    * **Custom Input Parser:** A custom buffered parser (`prossima_input`) is used for reading commands, which is significantly faster than repeated calls to standard `stdio` functions like `scanf`.
+    * **Results Caching:** The system caches calculated values (e.g., total available grams per ingredient, max production capacity per recipe within a time instant) to avoid redundant computations.
+
+---
 
 ## System Commands
 
@@ -54,10 +66,6 @@ The simulation is driven by the following text commands:
 > **`ordine (recipe_name) (number_of_items)`**
 >
 > * Places a new customer order. It is rejected if the specified recipe does not exist.
-
-## Technical Constraints
-* All names (ingredients, recipes) are alphanumeric strings (including `_`) up to 255 characters.
-* All quantities, capacities, and time values are positive 32-bit integers.
 
 ## How to Run
 
