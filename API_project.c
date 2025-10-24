@@ -40,7 +40,6 @@
     node->next->prev = node; \
   }
 
-// Rimuovere node.
 #define REMOVE_NODE(node, head) \
     if (node->prev) { \
       node->prev->next = node->next; \
@@ -53,7 +52,6 @@
     node->prev = NULL; \
     node->next = NULL;
 
-// Hash per strings.
 #define HASH_BUCKETS 1024
 size_t hash_string(const char* str) {
   size_t result = 12345;
@@ -66,9 +64,6 @@ size_t hash_string(const char* str) {
   return result;
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// Globali
-
 struct Ingrediento* ingredienti_head[HASH_BUCKETS] = {NULL};
 struct Ricetta* ricette_head[HASH_BUCKETS] = {NULL};
 struct Ordine* ordine_in_attesa_head = NULL;
@@ -77,9 +72,6 @@ struct Ordine* ordine_pronti_head = NULL;
 int corriere_periodicita = 0;
 int camioncino_capacita = 0;
 int istante = 0;
-
-///////////////////////////////////////////////////////////////////////////////
-// Rifornimento
 
 struct Rifornimento {
   int grammi;
@@ -101,22 +93,11 @@ void rifornimento_free(struct Rifornimento* r) {
   free(r);
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// Ingrediento
-
 struct Ingrediento {
   char* name;
-
-  // Tutti rifornamenti, ordinati di scadenza.
   struct Rifornimento* rifornimenti_head;
-
-  // Grammi totali nella lista di rifornimenti_head.
   int grammi_totali;
-
-  // Valore di istante quando abbiamo fatto ingrediento_butta_scaduti.
   int istante_scaduti_buttato;
-
-  // Prev/next di ingredient_head[hash].
   struct Ingrediento* prev;
   struct Ingrediento* next;
 };
@@ -173,9 +154,6 @@ void ingrediento_butta_scaduti(struct Ingrediento* i) {
   }
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// RicettaIngrediento
-
 struct RicettaIngrediento {
   struct Ingrediento* ingrediento;
   int grammi;
@@ -189,9 +167,6 @@ struct Ricetta {
 
   int num_ordini_in_attesa;
   int num_ordini_pronti;
-
-  // Optimization: Quando facciamo prova_preparare_ordini, salvare il quantita
-  // di questa ricetta che possiamo fare in capacita
   int capacita_istante;
   int capacita;
 
@@ -250,9 +225,6 @@ struct Ricetta* ricetta_cerca(const char* name) {
   return NULL;
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// Ordine
-
 struct Ordine {
   struct Ricetta* ricetta;
   int quantita;
@@ -277,7 +249,6 @@ void ordine_free(struct Ordine* o) {
   free(o);
 }
 
-// Return -1 se a va in camioncino prima di b
 int ordine_cmp_entrare_camioncino(struct Ordine* a, struct Ordine* b) {
   if (a && !b) {
     return -1;
@@ -298,7 +269,6 @@ int ordine_cmp_entrare_camioncino(struct Ordine* a, struct Ordine* b) {
   return 0;
 }
 
-// Return -1 se a esce di camioncino prima di be
 int ordine_cmp_uscire_camioncino(struct Ordine* a, struct Ordine* b) {
   if (a && !b) {
     return -1;
@@ -309,14 +279,12 @@ int ordine_cmp_uscire_camioncino(struct Ordine* a, struct Ordine* b) {
   if (!b && !a) {
     return 0;
   }
-  // Prima da peso
   if (a->grammi > b->grammi) {
     return -1;
   }
   if (a->grammi < b->grammi) {
     return 1;
   }
-  // Poi quello acetato preima va prima
   if (a->instante_acetato < b->instante_acetato) {
     return -1;
   }
@@ -326,17 +294,13 @@ int ordine_cmp_uscire_camioncino(struct Ordine* a, struct Ordine* b) {
   return 0;
 }
 
-// Return 1 se abbiamo ingredienti per preparare quest'ordine.
 int ordine_prova_preparare(struct Ordine* o) {
   struct Ricetta* r = o->ricetta;
 
-  // Se abbiamo gia provato fare questa ricetta in questa instante, e non
-  // possiamo fare questa quantita, usciamo presto.
   if (r->capacita_istante == istante && r->capacita < o->quantita) {
     return 0;
   }
 
-  // Re-computiamo quanti di questa ricetta possiamo fare.
   int capacita = -1;
   for (struct RicettaIngrediento* ri = r->ingredienti_head; ri; ri = ri->next) {
     struct Ingrediento* i = ri->ingrediento;
@@ -400,21 +364,14 @@ void ordine_prepara(struct Ordine* o) {
   }
   o->ricetta->capacita -= o->quantita;
 
-  // Remove for waiting list.
   REMOVE_NODE(o, ordine_in_attesa_head);
   o->ricetta->num_ordini_in_attesa -= 1;
   ASSERT(o->ricetta->num_ordini_in_attesa >= 0);
 
-  // Add to to pronti list
   INSERT_NODE_ORDERED(o, ordine_pronti_head, ordine_cmp_entrare_camioncino);
   o->ricetta->num_ordini_pronti += 1;
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// Commandi
-
-// Leggere 1 parola di stdin. Quando arriva a '\n', ritorna NULL. Quando
-// arriva a EOF, riturna NULL.
 char* prossima_input() {
   static char input[256];
   static int at_eol = 0;
@@ -426,8 +383,6 @@ char* prossima_input() {
   }
 
   while (1) {
-    // Leggere 1 char di stdin. Usa un buffer per essere piu veloce perche
-    // getc(stdin) e lento. 
     int c = 0;
     {
       static char buffer[256];
@@ -469,20 +424,16 @@ char* prossima_input() {
 }
 
 void command_aggiungi_ricetta() {
-  // Cerca se esiste questa ricetta gia.
   char* ricetta_name = prossima_input();
   if (ricetta_cerca(ricetta_name)) {
     printf("ignorato\n");
-
-    // Butta la riga.
+    
     while(prossima_input());
     return;
   }
 
-  // Facciamo ricetta struct.
   struct Ricetta* r = ricetta_alloc_insert(ricetta_name);
 
-  // Mettiamo ingredinti.
   while (1) {
     struct Ingrediento* i = ingrediento_prendere(prossima_input());
     if (!i) {
@@ -495,7 +446,6 @@ void command_aggiungi_ricetta() {
 }
 
 void command_rimuovi_ricetta() {
-  // Cerca ricetta.
   struct Ricetta* r = ricetta_cerca(prossima_input());
   ASSERT(prossima_input() == NULL);
   if (!r) {
@@ -511,15 +461,11 @@ void command_rimuovi_ricetta() {
     printf("ordini in sospeso\n");
     return;
   }
-
-  // Rimuove della lista.
   ricetta_remove_free(r);
-
   printf("rimossa\n");
 }
 
 void command_ordine() {
-  // Cerca ricetta.
   struct Ricetta* ricetta = ricetta_cerca(prossima_input());
   int quantita = atoi(prossima_input());
   ASSERT(prossima_input() == NULL);
@@ -531,13 +477,9 @@ void command_ordine() {
 
   struct Ordine* o = ordine_alloc(ricetta, quantita);
 
-  // Mettere alla fine del'list.
   INSERT_NODE_HEAD(o, ordine_in_attesa_head);
   o->ricetta->num_ordini_in_attesa += 1;
-
-  // Prepararlo.
   ordine_prepara(o);
-
   printf("accettato\n");
 }
 
@@ -551,7 +493,6 @@ void command_rifornimento() {
     int scadenza = atoi(prossima_input());
     i->grammi_totali += grammi;
 
-    // Cercare r_prev prima di scadenza
     struct Rifornimento* r_prev = i->rifornimenti_head;
     if (!r_prev || scadenza < r_prev->scadenza) {
       r_prev = NULL;
@@ -561,7 +502,6 @@ void command_rifornimento() {
       }
     }
 
-    // Insercire rinfornimento.
     if (r_prev && r_prev->scadenza == scadenza) {
       r_prev->grammi += grammi;
     } else {
@@ -596,7 +536,6 @@ void command_rifornimento() {
 void corriere() {
   struct Ordine* ordine_in_camioncino_head = NULL;
 
-  // Remuove di pronti list, mette in camioncino, fino che non c'e capacita.
   {
     int camioncino_grammi = 0;
     struct Ordine* o_next = NULL;
@@ -616,7 +555,6 @@ void corriere() {
     return;
   }
 
-  // Stampare e free i ordini in camioncino.
   {
     struct Ordine* o_next = NULL;
     for (struct Ordine* o = ordine_in_camioncino_head; o; o = o_next) {
@@ -661,7 +599,6 @@ int main(int argc, char* argv[]) {
       corriere();
     }
   }
-
   return 0;
 }
 
